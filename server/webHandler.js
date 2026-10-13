@@ -1,4 +1,6 @@
-import {makePlan,runResearch,computeResearch,normalizeInput} from './research.js';
+import {makePlan,runResearch,computeResearch,normalizeInput,complianceBoundary} from './research.js';
+import {createRequestGuard} from './requestGuard.js';
+const execute=createRequestGuard();
 const quotas=new Map();
 function json(value,status=200){return new Response(JSON.stringify(value),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});}
 export async function handleRequest(request,env,snapshot,assets,replay){
@@ -23,8 +25,15 @@ export async function handleRequest(request,env,snapshot,assets,replay){
     if(hit&&now-hit.at<60000&&hit.n>=8)return json({message:'研究请求较频繁，请一分钟后重试；可使用案例回放。'},429);
     if(!hit||now-hit.at>=60000)quotas.set(ip,{at:now,n:1});else hit.n++;
     if(quotas.size>1000)for(const [k,v]of quotas)if(now-v.at>60000)quotas.delete(k);
-    try{return json(url.pathname==='/api/plan'?await makePlan(body.input||body,env):await runResearch(body.input||body,env,snapshot,{plan:body.plan}));}
-    catch(e){return json({message:e.message||'研究执行失败；未生成默认结论'},400);}
+    try{
+      const input=normalizeInput(body.input||body),boundary=complianceBoundary(input.question);
+      if(boundary)return json({input,boundary});
+      const key=JSON.stringify([url.pathname,input,snapshot.capturedAt,Boolean(env.DEEPSEEK_API_KEY),Boolean(env.FUYAO_API_KEY),env.AI_MODEL||'']);
+      const {value,reused}=await execute(key,()=>url.pathname==='/api/plan'?makePlan(input,env):runResearch(input,env,snapshot,{plan:body.plan}));
+      if(url.pathname==='/api/research'&&reused)value.meta.reused={at:Date.now(),originalGeneratedAt:value.meta.generatedAt};
+      return json(value);
+    }
+    catch(e){return json({message:e.message||'研究执行失败；未生成默认结论'},e.status||400);}
   }
   const path=url.pathname==='/'?'/index.html':url.pathname,file=assets[path];
   if(file)return new Response(file.body,{headers:{'content-type':file.type,'x-content-type-options':'nosniff','cache-control':'no-cache','content-security-policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors *"}});
