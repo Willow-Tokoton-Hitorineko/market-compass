@@ -20,6 +20,17 @@ test('更换指数与区间实际改变计算',()=>{
   const a=compute(),b=compute(snapshot,{...input,index:'000300.SH',days:60});
   assert.notEqual(a.evidence[0].value,b.evidence[0].value);assert.equal(b.chart.length,61);assert.equal(a.chart.length,21);
 });
+test('历史不足不伪造均线或相对基准收益',()=>{
+  const b=clone();b.histories[input.index].raw.item=b.histories[input.index].raw.item.slice(-5);
+  const r=compute(b);assert.equal(r.dimensions[0].status,'PARTIAL');assert.equal(r.meta.confidence,'低');
+  assert.ok(!r.evidence.some(e=>e.id==='price.ma20'));assert.ok(!r.evidence.some(e=>e.id==='price.return'));
+  assert.ok(r.research.industry.rows.length);assert.ok(r.research.industry.rows.every(x=>x.relative===null));
+});
+test('历史来源时点缺失或过期不产生正常事实',()=>{
+  for(const dataTime of [null,snapshot.asOf-86400000]){const b=clone();b.histories[input.index].dataTime=dataTime;assert.throws(()=>compute(b),/没有可用/);}
+  const b=clone();b.histories['000016.SH'].dataTime=null;b.industry[0].record.dataTime=null;
+  const r=compute(b);assert.ok(!r.evidence.some(e=>e.id==='style.000016.SH'));assert.ok(!r.research.industry.rows.some(x=>x.name===b.industry[0].name));
+});
 test('个股缺失不填零、不把部分集合当作全市场',()=>{
   const b=clone();b.breadth.stocks=b.breadth.stocks.slice(0,1);
   const d=compute(b).dimensions.find(d=>d.key==='breadth');assert.equal(d.status,'MISSING');assert.equal(d.evidenceIds.length,0);assert.equal(d.state,'暂不判断');
@@ -61,7 +72,7 @@ test('非交易日、盘中未完成日线有明确状态',()=>{
   const expired=computeResearch(snapshot,normalizeInput(input),{now:Date.parse('2026-10-19T22:00:00+08:00')});assert.equal(expired.meta.isTradingDay,null);assert.equal(expired.meta.confidence,'低');assert.ok(expired.notes.some(x=>x.includes('未覆盖今日')));
 });
 test('预测和买卖仓位请求被边界拦截',()=>{
-  for(const q of ['预测明日涨跌','明天会涨还是跌','给我推荐仓位','建议买入什么股票','该不该买'])assert.ok(complianceBoundary(q));
+  for(const q of ['预测明日涨跌','明天会涨还是跌','给我推荐仓位','建议买入什么股票','该不该买','该不该卖','现在抄底吗','Should I buy now?','Will the index rise tomorrow?','Predict next week returns','Guaranteed profits','portfolio allocation'])assert.ok(complianceBoundary(q),q);
   assert.equal(complianceBoundary(input.question),null);
 });
 test('输入不能调用非白名单指数与区间',()=>{
@@ -77,6 +88,12 @@ test('LIVE失败明确切换真实快照，模型失败不伪装实时结果',as
 test('模型引用不存在证据时拒绝解释',async()=>{
   const fake=async()=>new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({answer:'有效回答',mainTension:{title:'虚假结论',detail:'无依据',evidenceIds:['fake','missing']},limitations:[],followups:[]})}}]}),{status:200});
   const r=await runResearch(input,{DEEPSEEK_API_KEY:'test-only'},snapshot,{fetcher:fake});assert.equal(r.ai.status,'RULE');assert.match(r.ai.reason,/校验/);assert.equal(r.aiTension,undefined);
+});
+test('模型解释中的英文交易建议被拒绝',async()=>{
+  const plan=await makePlan(input,{});
+  const fake=async()=>new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({answer:'You should buy now',answerEvidenceIds:['price.close'],mainTension:{title:'证据不足',detail:'需继续核验',evidenceIds:['price.close','price.return']},limitations:[],followups:[]})}}]}),{status:200});
+  const r=await runResearch(input,{DEEPSEEK_API_KEY:'test-only'},snapshot,{fetcher:fake});
+  assert.equal(r.ai.status,'RULE');assert.ok(!r.answer.text.includes('buy now'));
 });
 test('篡改计划不能诱导执行任意工具',async()=>{
   const p=await makePlan(input,{});p.tasks[0].tool='arbitrary-url';const r=await runResearch(input,{},snapshot,{plan:p});assert.ok(r.plan.tasks.every(t=>t.tool!=='arbitrary-url'));

@@ -30,7 +30,7 @@ npm test
 npm run build
 ```
 
-`npm test` 在隔离配置下运行36项测试，不调用付费模型。`npm run build` 生成 `sites/market-compass/worker/index.js` 和 `sites/market-compass/dist/`，并准备不含凭据的部署源码副本。
+`npm test` 在隔离配置下运行39项测试，不调用付费模型。`npm run build` 生成 `sites/market-compass/worker/index.js` 和 `sites/market-compass/dist/`，并准备不含凭据的部署源码副本。
 
 ## 配置
 
@@ -104,3 +104,5 @@ AI是Research Orchestrator：识别问题重点，排序研究任务，解释已
 样式自主实现，布局参考[Tabler](https://github.com/tabler/tabler)的紧凑工作台结构；未复制其代码或品牌资产。Sites Worker启动模板来自OpenAI Sites插件。esbuild仅作为开发构建依赖。
 
 源码采用MIT。金融数据及第三方输出的权利属于各提供方，不包含在源码MIT授权内；附带快照仅用于本次研究复核，不提供额外数据商用或再分发授权。
+
+发布前新增 review、修复与验证限制见 [发布前复核](docs/FINAL_REVIEW.md)。

@@ -23,13 +23,13 @@ export function normalizeInput(input={}){
   return {index:input.index,days,question,category,mode:input.mode==='SNAPSHOT'?'SNAPSHOT':'LIVE'};
 }
 export function complianceBoundary(question){
-  if(/仓位|几成仓|买入|卖出|买卖|加仓|减仓|建仓|清仓|止损|止盈|推荐.*(股票|个股)|该不该买|能不能买|收益保证|稳赚|buy|sell|position size/i.test(question))
+  if(/仓位|几成仓|买入|卖出|买卖|加仓|减仓|建仓|清仓|止损|止盈|推荐.*(股票|个股)|该不该买|能不能买|该不该卖|能不能卖|抄底|追涨|梭哈|满仓|收益保证|稳赚|\b(buy|sell)\b|position siz|portfolio allocat|guaranteed? (return|profit)|risk[- ]free (return|profit)/i.test(question))
     return {kind:'advice',message:'本产品不提供仓位或买卖建议。可以继续研究当前市场状态、证据局限和判断改变的条件。',suggestion:'哪些风险变量会改变当前市场状态判断？'};
-  if(/(预测|预判|明天|明日|下周|未来|will).*(涨|跌|收益|up|down)|涨跌预测|涨还是跌|会不会涨|会不会跌|能涨多少|保证.*收益/i.test(question))
+  if(/(预测|预判|明天|明日|下周|未来|will|tomorrow|next week|predict).*(涨|跌|收益|up|down|rise|fall|return)|涨跌预测|涨还是跌|会不会涨|会不会跌|能涨多少|保证.*收益|\b(rise|fall|up|down)\b.*(tomorrow|next week)/i.test(question))
     return {kind:'prediction',message:'不能提供未来涨跌或收益预测。可以研究当前结构、市场参与度及可观察的状态切换条件。',suggestion:'指数的当前结构与市场参与度是否一致？什么条件会改变判断？'};
   return null;
 }
-function safeOutput(text){return !/(买入|卖出|加仓|减仓|建仓|清仓|建议.*仓位|明日.*[涨跌]|必涨|必跌|稳赚|收益承诺)/.test(text);}
+function safeOutput(text){return !complianceBoundary(text)&&!/(必涨|必跌|一定.*[涨跌]|收益承诺)/.test(text);}
 async function llm(env,messages,fetcher=fetch){
   if(!env.DEEPSEEK_API_KEY)throw new Error('模型服务端凭据未配置');
   // The provider origin is server configuration, never request-supplied.
@@ -76,7 +76,7 @@ export function validateRecord(record,asOf,{daily=false,allowEmpty=false}={}){
   if(sourceDate>targetDate && !daily)return {status:'CONFLICT',reason:'来源横截面时点晚于研究截至日，不能混用'};
   return {status:'OK',reason:null};
 }
-function barsOf(record,asOf){return (record?.raw.item??[]).filter(x=>Number.isFinite(x.close_price)&&Number.isFinite(x.date_ms)&&x.date_ms<=asOf).sort((a,b)=>a.date_ms-b.date_ms);}
+function barsOf(record,asOf){if(validateRecord(record,asOf,{daily:true}).status!=='OK')return [];return (record?.raw.item??[]).filter(x=>Number.isFinite(x.close_price)&&Number.isFinite(x.date_ms)&&x.date_ms<=asOf).sort((a,b)=>a.date_ms-b.date_ms);}
 export function computeResearch(bundle,input,{now=Date.now(),mode='SNAPSHOT',failure=null}={}){
   const evidence=[],dimensions=[],conditions=[],claims=[];
   const calendar=bundle.calendar?.raw.item??[];
@@ -103,12 +103,12 @@ export function computeResearch(bundle,input,{now=Date.now(),mode='SNAPSHOT',fai
   function claim(id,text,ids,uncertainty=[]){const c={id,type:'SYNTHESIS',text,evidenceIds:ids,uncertainty};claims.push(c);ids.forEach(eid=>{const e=evidence.find(e=>e.id===eid);if(e)e.supports.push(id);});return c;}
   function condition(id,key,variable,current,unit,standard,target,met,ids){conditions.push({id,dimension:key,variable,current:round(current),unit,standard,target,met,evidenceIds:ids,ruleVersion:'market-state-v2'});}
   const record=bundle.histories[input.index],name=INDEXES.find(x=>x.code===input.index).name;
-  const last=bars.at(-1).close_price,ma20=average(bars.slice(-20).map(x=>x.close_price)),ma60=bars.length>=60?average(bars.slice(-60).map(x=>x.close_price)):null;
+  const last=bars.at(-1).close_price,ma20=bars.length>=20?average(bars.slice(-20).map(x=>x.close_price)):null,ma60=bars.length>=60?average(bars.slice(-60).map(x=>x.close_price)):null;
   const ret=selected.length===input.days+1?pct(last,selected[0].close_price):null;
   const rawBars=arr=>arr.map(x=>({date_ms:x.date_ms,close_price:x.close_price}));
   const structureIds=[ev('price.close',name+'收盘',last,'点','所选指数截至日已完成日线收盘',record,['close_price','date_ms'],rawBars(bars.slice(-1)))];
   if(ret!==null)structureIds.push(ev('price.return',name+'区间涨跌幅',ret,'%','最近'+input.days+'个交易日，使用'+(input.days+1)+'个收盘端点',record,['close_price','date_ms'],rawBars([selected[0],selected.at(-1)]),'(末日收盘/起点收盘−1)×100'));
-  structureIds.push(ev('price.ma20','MA20',ma20,'点','最近20个交易日收盘算术均值，包含截至日',record,['close_price','date_ms'],rawBars(bars.slice(-20)),'sum(close_price)/20'));
+  if(ma20!==null)structureIds.push(ev('price.ma20','MA20',ma20,'点','最近20个交易日收盘算术均值，包含截至日',record,['close_price','date_ms'],rawBars(bars.slice(-20)),'sum(close_price)/20'));
   if(ma60!==null)structureIds.push(ev('price.ma60','MA60',ma60,'点','最近60个交易日收盘算术均值，包含截至日',record,['close_price','date_ms'],rawBars(bars.slice(-60)),'sum(close_price)/60'));
   const structure=ma60===null?'历史不足':last>ma20&&last>ma60?'位于两条均线上方':last<ma20&&last<ma60?'位于两条均线下方':'均线之间震荡';
   const structureStatus=ret===null||ma60===null?'PARTIAL':'OK';
@@ -217,7 +217,7 @@ function buildSecondary(bundle,input,asOf,evidence,dimensions,conditions,styleRo
     const bars=barsOf(sector.record,asOf);if(bars.length<input.days+1||bars.at(-1)?.date_ms!==asOf)continue;
     const ret=pct(bars.at(-1).close_price,bars.at(-1-input.days).close_price),id='industry.'+sector.code;
     evidence.push({id,type:'FACT',label:sector.name+'区间涨跌幅',value:round(ret),unit:'%',caliber:'指定的8个跨行业观察样本；近'+input.days+'个交易日，非全行业排名',source:'扶摇金融数据 API',endpoint:sector.record.endpoint,query:sector.record.query,requestId:sector.record.requestId,dataTime:asOf,sourceTime:sector.record.dataTime,fetchedAt:sector.record.fetchedAt,fields:['close_price','date_ms'],rawInputs:[bars.at(-1-input.days),bars.at(-1)].map(x=>({date_ms:x.date_ms,close_price:x.close_price})),formula:'(末日收盘/起点收盘−1)×100',computed:true,quality:'OK',supports:['industry']});
-    industries.push({name:sector.name,return:round(ret),relative:round(ret-benchmark),evidenceIds:[id]});
+    industries.push({name:sector.name,return:round(ret),relative:Number.isFinite(benchmark)?round(ret-benchmark):null,evidenceIds:Number.isFinite(benchmark)?[id,'price.return']:[id]});
   }
   industries.sort((a,b)=>b.return-a.return);
   const history=barsOf(bundle.histories[input.index],asOf),historical=[];
@@ -246,6 +246,7 @@ export async function runResearch(rawInput,env={},snapshot,{plan:providedPlan,fe
     try{
       const cacheKey='bundle:'+input.index,hit=cache.get(cacheKey);
       bundle=hit&&Date.now()-hit.at<180000?hit.bundle:await collectBundle(env.FUYAO_API_KEY,{fetcher,primaryIndex:input.index,taskOrder:plan.tasks.map(t=>t.key)});
+      computeResearch(bundle,input,{mode:'LIVE'}); // Validate core evidence before accepting or caching LIVE.
       cache.set(cacheKey,{at:Date.now(),bundle});mode='LIVE';
     }catch(e){failure={reason:e.message,requested:'LIVE',effective:'SNAPSHOT',at:Date.now()};}
   }
