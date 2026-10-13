@@ -117,7 +117,18 @@ test('公共API回放明确标记、拒绝非法请求',async()=>{
   const r=await handleRequest(new Request('http://test/api/replay'),{},snapshot,{},replay);const body=await r.json();assert.equal(body.ai.status,'REPLAY');assert.equal(body.meta.mode,'SNAPSHOT');
   const older={...replay,meta:{...replay.meta,asOf:replay.meta.asOf-86400000}};
   const oldResponse=await handleRequest(new Request('http://test/api/replay'),{},snapshot,{},older);const oldBody=await oldResponse.json();assert.equal(oldBody.meta.asOf,older.meta.asOf);assert.equal(oldBody.meta.confidence,'低');
-  const bad=await handleRequest(new Request('http://test/api/research',{method:'POST',body:'invalid'}),{},snapshot,{},replay);assert.equal(bad.status,400);
+  const bad=await handleRequest(new Request('http://test/api/research',{method:'POST',headers:{'content-type':'application/json'},body:'invalid'}),{},snapshot,{},replay);assert.equal(bad.status,400);
+});
+test('研究API拒绝跨站来源与表单请求，允许同源公网转发',async()=>{
+  const payload=JSON.stringify({input});
+  for(const headers of [
+    {'content-type':'application/json',origin:'https://attacker.example',host:'product.example'},
+    {'content-type':'application/json','sec-fetch-site':'cross-site'},
+    {'content-type':'text/plain'},
+    {'content-type':'application/json',origin:'null'}
+  ]){const r=await handleRequest(new Request('http://localhost/api/plan',{method:'POST',headers,body:payload}),{},snapshot,{});assert.ok([403,415].includes(r.status));}
+  const allowed=await handleRequest(new Request('http://localhost/api/plan',{method:'POST',headers:{'content-type':'application/json',origin:'https://product.example',host:'product.example','sec-fetch-site':'same-origin'},body:payload}),{},snapshot,{});assert.equal(allowed.status,200);
+  const home=await handleRequest(new Request('http://localhost/'),{},snapshot,{'/index.html':{type:'text/html',body:'test'}});assert.match(home.headers.get('content-security-policy'),/frame-ancestors 'self'/);
 });
 test('取数阶段日历失败时停止，不能回退服务器时间',async()=>{
   await assert.rejects(()=>collectBundle('test-only',{fetcher:async()=>new Response(JSON.stringify({code:0,data:{timestamp:Date.now(),item:[]}}))}),/交易日历失败/);

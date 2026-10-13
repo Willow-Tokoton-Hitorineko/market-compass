@@ -18,6 +18,13 @@ export async function handleRequest(request,env,snapshot,assets,replay){
   }
   if(['/api/plan','/api/research'].includes(url.pathname)){
     if(request.method!=='POST')return json({message:'请使用POST提交研究输入'},405);
+    if(request.headers.get('sec-fetch-site')==='cross-site')return json({message:'请从产品页面发起研究'},403);
+    const origin=request.headers.get('origin'),host=request.headers.get('host')||url.host;
+    if(origin){
+      try{const source=new URL(origin);if(!['http:','https:'].includes(source.protocol)||source.host!==host)return json({message:'请求来源不匹配，请从产品页面发起研究'},403);}
+      catch{return json({message:'请求来源无效'},403);}
+    }
+    if(request.headers.get('content-type')?.split(';')[0].trim().toLowerCase()!=='application/json')return json({message:'研究请求需要JSON格式'},415);
     const bytes=await request.text();if(bytes.length>16000)return json({message:'请求过长'},413);
     let body;try{body=JSON.parse(bytes);}catch{return json({message:'请求不是有效JSON'},400);}
     const ip=request.headers.get('cf-connecting-ip')||request.headers.get('x-forwarded-for')||'local';
@@ -36,6 +43,6 @@ export async function handleRequest(request,env,snapshot,assets,replay){
     catch(e){return json({message:e.message||'研究执行失败；未生成默认结论'},e.status||400);}
   }
   const path=url.pathname==='/'?'/index.html':url.pathname,file=assets[path];
-  if(file)return new Response(file.body,{headers:{'content-type':file.type,'x-content-type-options':'nosniff','cache-control':'no-cache','content-security-policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors *"}});
+  if(file)return new Response(file.body,{headers:{'content-type':file.type,'x-content-type-options':'nosniff','cache-control':'no-cache','content-security-policy':"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'"}});
   return json({message:'资源不存在'},404);
 }

@@ -25,12 +25,14 @@ npm start
 
 默认 http://localhost:8787 。若本机端口已占用，设置 `PORT=8788` 后启动。没有服务端凭据时，LIVE会明确失败并切换到真实SNAPSHOT，模型计划及解释显示规则降级。案例回放不需要任何远程服务。
 
+本地运行使用体验者自己的电脑，不依赖提交者的电脑或临时公网入口。
+
 ```sh
 npm test
 npm run build
 ```
 
-`npm test` 在隔离配置下运行45项测试，不调用付费模型。`npm run build` 生成 `sites/market-compass/worker/index.js` 和 `sites/market-compass/dist/`，并准备不含凭据的部署源码副本。
+`npm test` 在隔离配置下运行46项测试，不调用付费模型。`npm run build` 生成 `sites/market-compass/worker/index.js` 和 `sites/market-compass/dist/`，并准备不含凭据的部署源码副本。
 
 ## 配置
 
