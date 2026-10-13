@@ -5,7 +5,7 @@
 - Web产品：https://tahoe-psychiatry-surrounded-task.trycloudflare.com/
 - 源代码仓库：https://github.com/Willow-Tokoton-Hitorineko/market-compass
 
-公网体验无需安装、登录或填写API Key。凭据保存在服务端，不包含在源码或提交附件中。本地启动方法见source/README.md。
+Web演示无需填写API Key。凭据不包含在源码或提交附件中。包内提供本地启动入口，环境要求为Node.js 22及以上。
 
 ## 体验步骤（约两分钟）
 
@@ -15,6 +15,12 @@
 4. 查看判断改变的条件，再切换风格、行业、风险变量或历史阶段，查看二级研究结果和证据。
 
 外部服务失败时，页面明确提示Snapshot切换或模型规则降级。右上“案例回放”提供保存的真实研究案例，标识REPLAY，本次不调用外部接口。
+
+## 本地运行
+
+Windows安装Node.js 22及以上后，解压整个附件，双击START_LOCAL.cmd。出现服务地址后，在浏览器打开http://localhost:8879。关闭窗口即停止本地服务。其他系统在source目录运行npm start，默认地址为http://localhost:8787。直接启动研究服务不需要先安装构建依赖。
+
+未配置API Key时，案例回放和真实Snapshot可操作；新研究明确显示规则降级，不声称本次调用在线模型。不会使用提交者的API额度。需要重新调用数据与模型时，使用运行者自己的服务端凭据，配置方法见source/README.md。
 
 ## 产品设计
 
@@ -26,6 +32,7 @@
 
 - README.md：产品地址、源码地址及体验步骤。
 - START.html：可在浏览器打开的产品入口与操作指引。
+- START_LOCAL.cmd：Windows本地启动入口（需要Node.js 22+）。
 - docs/AI_USAGE.md：使用工具、参与环节、修正及验证记录。
 - docs/TESTING.md：主链路、接口异常、数据质量及合规边界测试。
 - source/：源码、README、配置样例、依赖锁文件、测试及研究数据。
