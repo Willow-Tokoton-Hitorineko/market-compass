@@ -25,6 +25,8 @@ test('历史不足不伪造均线或相对基准收益',()=>{
   const r=compute(b);assert.equal(r.dimensions[0].status,'PARTIAL');assert.equal(r.meta.confidence,'低');
   assert.ok(!r.evidence.some(e=>e.id==='price.ma20'));assert.ok(!r.evidence.some(e=>e.id==='price.return'));
   assert.ok(r.research.industry.rows.length);assert.ok(r.research.industry.rows.every(x=>x.relative===null));
+  assert.match(r.contradiction.title,/历史不足/);assert.ok(!r.contradiction.detail.includes('位于两条均线上方'));
+  for(const n of [19,20,59]){const short=clone();short.histories[input.index].raw.item=short.histories[input.index].raw.item.slice(-n);const result=compute(short);assert.match(result.contradiction.title,/历史不足/);assert.ok(!result.contradiction.detail.includes('位于两条均线上方'));}
 });
 test('历史来源时点缺失或过期不产生正常事实',()=>{
   for(const dataTime of [null,snapshot.asOf-86400000]){const b=clone();b.histories[input.index].dataTime=dataTime;assert.throws(()=>compute(b),/没有可用/);}

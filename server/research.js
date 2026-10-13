@@ -195,8 +195,9 @@ export function computeResearch(bundle,input,{now=Date.now(),mode='SNAPSHOT',fai
   if(spread!==null){for(const [id,standard,target,met] of [['large','收益差 > 1个百分点','大盘代理相对占优',spread>1],['small','收益差 < −1个百分点','小盘代理相对占优',spread< -1],['balanced','−1 ≤ 收益差 ≤ 1个百分点','大小盘差异有限',spread>=-1&&spread<=1]])condition('style.'+id,'style','上证50−中证1000收益差',spread,'百分点',standard,target,met,styleIds);}
   if(turnoverRatio!==null){for(const [id,standard,target,met] of [['active','成交额倍数 > 1.2','成交较活跃',turnoverRatio>1.2],['quiet','成交额倍数 < 0.8','成交偏清淡',turnoverRatio<.8],['normal','0.8 ≤ 成交额倍数 ≤ 1.2','成交接近均值',turnoverRatio>=.8&&turnoverRatio<=1.2]])condition('liquidity.'+id,'liquidity','成交额／20日均值',turnoverRatio,'倍',standard,target,met,liquidityIds);}
   let contradiction;
-  if(!conflict&&upRatio!==null&&last>ma20&&last>ma60&&upRatio<40)contradiction={title:'价格结构与截至日参与度背离',detail:'指数位于两条均线上方，但截至日宽基成分股上涨占比偏低。两者时间口径不同，这支持观察结构与当日参与面之间的张力，不能证明整个区间由少数权重驱动。',evidenceIds:[...structureIds,...breadthIds]};
-  else if(!conflict&&turnoverRatio!==null&&last>ma20&&last>ma60&&turnoverRatio<.8)contradiction={title:'价格结构偏强，交易活跃度不足',detail:'指数位于两条均线上方，截至日成交额低于近期常态。两条事实存在张力，但不能据此确认资金流出或未来结构失效。',evidenceIds:[...structureIds,...liquidityIds]};
+  if(structureStatus==='PARTIAL')contradiction={title:'价格历史不足，暂不识别主要矛盾',detail:'所选区间收益或中期均线证据不足，不能确认价格结构与其他维度的背离；保留已取得事实，等待完整历史数据。',evidenceIds:structureIds};
+  else if(!conflict&&upRatio!==null&&Number.isFinite(ma20)&&Number.isFinite(ma60)&&last>ma20&&last>ma60&&upRatio<40)contradiction={title:'价格结构与截至日参与度背离',detail:'指数位于两条均线上方，但截至日宽基成分股上涨占比偏低。两者时间口径不同，这支持观察结构与当日参与面之间的张力，不能证明整个区间由少数权重驱动。',evidenceIds:[...structureIds,...breadthIds]};
+  else if(!conflict&&turnoverRatio!==null&&Number.isFinite(ma20)&&Number.isFinite(ma60)&&last>ma20&&last>ma60&&turnoverRatio<.8)contradiction={title:'价格结构偏强，交易活跃度不足',detail:'指数位于两条均线上方，截至日成交额低于近期常态。两条事实存在张力，但不能据此确认资金流出或未来结构失效。',evidenceIds:[...structureIds,...liquidityIds]};
   else contradiction={title:'当前证据未识别出显著背离',detail:'已接入维度没有命中所设的主要背离规则。估值与事件证据缺失，不能把这一结果理解为市场没有风险。',evidenceIds:[...structureIds,...breadthIds,...liquidityIds]};
   if(conflict){contradiction={title:'核心来源冲突，暂不识别主要矛盾',detail:'行情快照和日线存在冲突，应先核对价格证据，再解释维度关系。',evidenceIds:dimensions[0].evidenceIds};}
   claim('contradiction',contradiction.title+'。'+contradiction.detail,contradiction.evidenceIds);
