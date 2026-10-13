@@ -6,11 +6,11 @@
 
 ## 体验
 
-已部署地址： https://market-compass-research.c1154655058.chatgpt.site
+已部署地址： https://tahoe-psychiatry-surrounded-task.trycloudflare.com
 
 源码仓库：https://github.com/Willow-Tokoton-Hitorineko/market-compass
 
-交付状态（2026-10-13）：Sites为公开、active状态；生产日志记录浏览器首页、静态资源、研究计划和研究接口返回200。部分命令行请求遇到Cloudflare 403，不能据此认定所有浏览器访问失败。尚未完成独立无痕窗口及另一网络的完整交互验收。Vercel仅为备用适配器，未部署。
+运行状态（2026-10-14）：原Sites地址在多个网络出口遭Cloudflare拦截，已改用独立临时演示入口。提交者已在此前失败的网络确认研究生成与证据窗口可用；在线计划、取数和解释也通过接口验证。该入口依赖提交者本机与网络转发进程持续运行，关机、休眠、断网或停止进程后不可用；不宣称其为永久托管。Vercel与Netlify适配器已准备，尚未部署。
 
 产品按访客无需登录、安装或填写API Key设计。进入页面后选择指数和20/60个交易日区间，提出问题，点击「开始研究」。点击核心结论或主要矛盾核验证据；在结果底部继续研究风格、行业、风险变量和历史阶段。右上「案例回放」读取保存的真实模型研究结果。
 
@@ -30,7 +30,7 @@ npm test
 npm run build
 ```
 
-`npm test` 在隔离配置下运行43项测试，不调用付费模型。`npm run build` 生成 `sites/market-compass/worker/index.js` 和 `sites/market-compass/dist/`，并准备不含凭据的部署源码副本。
+`npm test` 在隔离配置下运行45项测试，不调用付费模型。`npm run build` 生成 `sites/market-compass/worker/index.js` 和 `sites/market-compass/dist/`，并准备不含凭据的部署源码副本。
 
 ## 配置
 
@@ -58,7 +58,7 @@ AI是Research Orchestrator：识别问题重点，排序研究任务，解释已
 
 ## 运行架构与模式
 
-原生HTML/CSS/JS前端，Node本地服务；公网使用Cloudflare Worker（Sites托管），同源API调用数据与模型，服务端环境变量保存凭据。
+原生HTML/CSS/JS前端与Node研究服务；当前公网演示通过Cloudflare Quick Tunnel转发本机服务，前端同源调用API。服务端环境变量保存凭据。保留Sites Worker、Vercel与Netlify部署适配。
 
 - LIVE：扶摇实时取数，核心日历或所选指数取数失败时明确切换SNAPSHOT；次要维度失败保留失败状态与缺失原因。
 - SNAPSHOT：`data/snapshot.json` 为2026-10-13采集的真实数据，日期与原始值固定；仍可由在线模型研究。

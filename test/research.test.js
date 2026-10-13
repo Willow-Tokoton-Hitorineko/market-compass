@@ -73,6 +73,12 @@ test('非交易日、盘中未完成日线有明确状态',()=>{
   const intraday=computeResearch(snapshot,normalizeInput(input),{now:Date.parse('2026-10-13T10:00:00+08:00')});assert.ok(intraday.meta.asOf<snapshot.asOf);assert.notEqual(intraday.dimensions.find(d=>d.key==='breadth').status,'OK');
   const expired=computeResearch(snapshot,normalizeInput(input),{now:Date.parse('2026-10-19T22:00:00+08:00')});assert.equal(expired.meta.isTradingDay,null);assert.equal(expired.meta.confidence,'低');assert.ok(expired.notes.some(x=>x.includes('未覆盖今日')));
 });
+test('新交易日收盘前允许上一已完成交易日的日线来源',()=>{
+  const b=clone(),next=Date.parse('2026-10-14T00:00:00+08:00');b.asOf=next;
+  b.calendar.dataTime=next;b.calendar.raw.item.push({date_ms:next,date:'20261014'});
+  const r=computeResearch(b,normalizeInput(input),{now:Date.parse('2026-10-14T00:30:00+08:00'),mode:'LIVE'});
+  assert.equal(r.meta.asOf,snapshot.asOf);assert.equal(r.meta.mode,'LIVE');assert.ok(r.notes.some(x=>x.includes('交易日尚未完成')));
+});
 test('预测和买卖仓位请求被边界拦截',()=>{
   for(const q of ['预测明日涨跌','明天会涨还是跌','给我推荐仓位','建议买入什么股票','该不该买','该不该卖','现在抄底吗','Should I buy now?','Will the index rise tomorrow?','Predict next week returns','Guaranteed profits','portfolio allocation'])assert.ok(complianceBoundary(q),q);
   assert.equal(complianceBoundary(input.question),null);
@@ -86,6 +92,11 @@ test('模型未接通时明确规则计划，仍有任务来源',async()=>{
 test('LIVE失败明确切换真实快照，模型失败不伪装实时结果',async()=>{
   const r=await runResearch({...input,mode:'LIVE'},{},snapshot,{fetcher:async()=>{throw new Error('模拟网络中断');}});
   assert.equal(r.meta.mode,'SNAPSHOT');assert.equal(r.meta.failure.requested,'LIVE');assert.equal(r.meta.asOf,snapshot.asOf);assert.equal(r.ai.status,'RULE');assert.match(r.ai.reason,/未配置/);
+});
+test('LIVE取数返回无效核心证据时恢复原始Snapshot',async()=>{
+  const bad=clone();bad.histories['000300.SH'].dataTime=null;
+  const r=await runResearch({...input,index:'000300.SH',mode:'LIVE'},{},snapshot,{collector:async()=>bad});
+  assert.equal(r.meta.mode,'SNAPSHOT');assert.ok(r.meta.failure);assert.equal(r.meta.asOf,snapshot.asOf);assert.equal(r.chart.length,21);
 });
 test('模型引用不存在证据时拒绝解释',async()=>{
   const fake=async()=>new Response(JSON.stringify({choices:[{message:{content:JSON.stringify({answer:'有效回答',mainTension:{title:'虚假结论',detail:'无依据',evidenceIds:['fake','missing']},limitations:[],followups:[]})}}]}),{status:200});

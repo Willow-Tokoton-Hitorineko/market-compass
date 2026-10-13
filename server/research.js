@@ -85,7 +85,9 @@ export function computeResearch(bundle,input,{now=Date.now(),mode='SNAPSHOT',fai
   const isTradingDay=calendarCurrent?calendar.some(x=>shDate(x.date_ms)===today):null;
   const latestTradingDay=calendar.filter(x=>shDate(x.date_ms)<=today).sort((a,b)=>a.date_ms-b.date_ms).at(-1)?.date_ms;
   // Daily studies use completed bars. Never call an unfinished bar a close.
-  const candidates=barsOf(bundle.histories[input.index],bundle.asOf).filter(x=>shDate(x.date_ms)<today || localTime>='15:10');
+  const completedCalendarDay=calendar.filter(x=>shDate(x.date_ms)<today||(shDate(x.date_ms)===today&&localTime>='15:10')).sort((a,b)=>a.date_ms-b.date_ms).at(-1)?.date_ms;
+  const completedCutoff=Math.min(bundle.asOf,completedCalendarDay??bundle.asOf);
+  const candidates=barsOf(bundle.histories[input.index],completedCutoff).filter(x=>shDate(x.date_ms)<today || localTime>='15:10');
   const asOf=candidates.at(-1)?.date_ms;
   if(!asOf)throw new Error('核心指数没有可用的已完成日线');
   const bars=candidates,selected=bars.slice(-input.days-1);
@@ -236,7 +238,7 @@ function buildSecondary(bundle,input,asOf,evidence,dimensions,conditions,styleRo
     stage:{title:'历史阶段：按当时可得行情复盘',question:'过去的价格结构与当前有哪些相似及差异？',rows:historical,note:'取60及120个交易日前作为固定对照；只对比当时可得行情。没有历史宽度和事件证据，不输出七维相似度或未来走势推断。'},
   };
 }
-export async function runResearch(rawInput,env={},snapshot,{plan:providedPlan,fetcher=fetch}={}){
+export async function runResearch(rawInput,env={},snapshot,{plan:providedPlan,fetcher=fetch,collector=collectBundle}={}){
   const input=normalizeInput(rawInput),boundary=complianceBoundary(input.question);
   if(boundary)return {input,boundary};
   let plan;
@@ -246,10 +248,10 @@ export async function runResearch(rawInput,env={},snapshot,{plan:providedPlan,fe
   if(input.mode==='LIVE'){
     try{
       const cacheKey='bundle:'+input.index,hit=cache.get(cacheKey);
-      bundle=hit&&Date.now()-hit.at<180000?hit.bundle:await collectBundle(env.FUYAO_API_KEY,{fetcher,primaryIndex:input.index,taskOrder:plan.tasks.map(t=>t.key)});
+      bundle=hit&&Date.now()-hit.at<180000?hit.bundle:await collector(env.FUYAO_API_KEY,{fetcher,primaryIndex:input.index,taskOrder:plan.tasks.map(t=>t.key)});
       computeResearch(bundle,input,{mode:'LIVE'}); // Validate core evidence before accepting or caching LIVE.
       cache.set(cacheKey,{at:Date.now(),bundle});mode='LIVE';
-    }catch(e){failure={reason:e.message,requested:'LIVE',effective:'SNAPSHOT',at:Date.now()};}
+    }catch(e){bundle=snapshot;mode='SNAPSHOT';failure={reason:e.message,requested:'LIVE',effective:'SNAPSHOT',at:Date.now()};}
   }
   const result=computeResearch(bundle,input,{mode,failure});
   result.meta.upstreamErrors=bundle.errors;
