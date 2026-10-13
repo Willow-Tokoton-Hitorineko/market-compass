@@ -31,3 +31,4 @@ sites/market-compass-hosting.json
 sites/market-compass/site.tar.gz
 submission-source.zip
 .vercel/
+.netlify/
