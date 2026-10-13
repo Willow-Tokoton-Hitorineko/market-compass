@@ -1,0 +1,33 @@
+# 环境变量与密钥（严禁提交）
+.env
+.env.local
+.env.*.local
+
+# 依赖与构建产物
+node_modules/
+dist/
+build/
+*.log
+npm-debug.log*
+
+# 运行时缓存
+.cache/
+data/cache/
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# 编辑器
+.vscode/
+.idea/
+
+# Local browser profiles and deployment archives
+.shot_profile/
+.shot_static.png
+sites/market-compass/source/
+sites/market-compass/worker/index.js
+sites/market-compass-hosting.json
+sites/market-compass/site.tar.gz
+submission-source.zip
+.vercel/

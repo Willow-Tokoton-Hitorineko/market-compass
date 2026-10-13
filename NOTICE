@@ -1,0 +1,7 @@
+大势罗盘原创研究服务与界面。
+
+构建依赖：esbuild（MIT），https://github.com/evanw/esbuild 。
+托管启动模板：OpenAI Sites插件提供的Worker ESM模板。
+布局参考：Tabler（MIT），https://github.com/tabler/tabler 。未复制其源代码、品牌或图标。
+数据：扶摇金融数据API；金融数据权利归提供方，不纳入源码MIT许可。
+模型输出：DeepSeek服务；保存的研究结果明确标注回放。

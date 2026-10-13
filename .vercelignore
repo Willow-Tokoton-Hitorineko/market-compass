@@ -1,0 +1,11 @@
+.env
+.env.*
+.git
+.cache
+.shot_profile
+.shot_static.png
+node_modules
+dist
+sites
+docs/screenshot.png
+submission-source.zip

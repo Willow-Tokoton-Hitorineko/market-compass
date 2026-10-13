@@ -1,0 +1,29 @@
+{
+  "name": "market-compass",
+  "version": "1.0.0",
+  "description": "大势罗盘 · AI Native A 股市场大势研判产品（同花顺开放式笔试 题目01）",
+  "type": "module",
+  "main": "server/local.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server/local.js",
+    "dev": "node --watch server/local.js",
+    "capture": "node scripts/capture-snapshot.js",
+    "build": "node scripts/build-site.js",
+    "serve:dist": "node scripts/serve-dist.js",
+    "test": "node scripts/test.js"
+  },
+  "keywords": [
+    "a-share",
+    "market-regime",
+    "ai-native",
+    "fuyao"
+  ],
+  "license": "MIT",
+  "private": true,
+  "devDependencies": {
+    "esbuild": "0.25.12"
+  }
+}

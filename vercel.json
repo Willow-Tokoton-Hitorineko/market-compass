@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "node scripts/build-vercel.js",
+  "outputDirectory": "public",
+  "functions": {"api/index.js": {"maxDuration": 60,"includeFiles": "data/**"}},
+  "rewrites": [{"source": "/api/:route", "destination": "/api/index?route=:route"}],
+  "headers": [{"source": "/(.*)","headers": [{"key": "X-Content-Type-Options", "value": "nosniff"}]}]
+}
